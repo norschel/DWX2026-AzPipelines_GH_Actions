@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/DemoWpfApp/">
+    <Project Path="DemoWpfApp/DemoWpfApp/DemoWpfApp.csproj" />
+  </Folder>
+</Solution>
