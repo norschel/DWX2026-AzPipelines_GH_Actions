@@ -1,0 +1,80 @@
+# Azure Pipelines – DemoWpfApp
+# Builds, versions and publishes the .NET 8 WPF demo application.
+
+trigger:
+  branches:
+    include:
+      - main
+
+variables:
+  Major: '1'
+  Minor: '0'
+  BuildConfiguration: 'Release'
+  Solution: 'DemoWpfApp.slnx'
+  Project: 'DemoWpfApp/DemoWpfApp/DemoWpfApp.csproj'
+  PublishDir: '$(Build.ArtifactStagingDirectory)/publish'
+
+# Build number format:  1.0.<BuildId>
+name: $(Major).$(Minor).$(Build.BuildId)
+
+pool:
+  vmImage: 'windows-latest'
+
+steps:
+
+  # -------------------------------------------------
+  # 1. Restore NuGet packages
+  # -------------------------------------------------
+  - task: DotNetCoreCLI@2
+    displayName: 'Restore NuGet packages'
+    inputs:
+      command: 'restore'
+      projects: '$(Solution)'
+
+  # -------------------------------------------------
+  # 2. Build and stamp the version
+  #    AssemblyVersion / FileVersion need four parts,
+  #    so we append .0 to the three-part build number.
+  # -------------------------------------------------
+  - task: DotNetCoreCLI@2
+    displayName: 'Build $(BuildConfiguration) – v$(Build.BuildNumber)'
+    inputs:
+      command: 'build'
+      projects: '$(Solution)'
+      arguments: >-
+        --configuration $(BuildConfiguration)
+        --no-restore
+        /p:Version=$(Build.BuildNumber)
+        /p:AssemblyVersion=$(Build.BuildNumber).0
+        /p:FileVersion=$(Build.BuildNumber).0
+
+  # -------------------------------------------------
+  # 3. Publish (self-contained, win-x64)
+  # -------------------------------------------------
+  - task: DotNetCoreCLI@2
+    displayName: 'Publish application'
+    inputs:
+      command: 'publish'
+      publishWebProjects: false
+      projects: '$(Project)'
+      arguments: >-
+        --configuration $(BuildConfiguration)
+        --no-build
+        --runtime win-x64
+        --self-contained true
+        /p:Version=$(Build.BuildNumber)
+        /p:AssemblyVersion=$(Build.BuildNumber).0
+        /p:FileVersion=$(Build.BuildNumber).0
+        --output $(PublishDir)
+      zipAfterPublish: true
+      modifyOutputPath: false
+
+  # -------------------------------------------------
+  # 4. Upload build artifacts
+  # -------------------------------------------------
+  - task: PublishBuildArtifacts@1
+    displayName: 'Upload artifacts'
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'DemoWpfApp-$(Build.BuildNumber)'
+      publishLocation: 'Container'
